@@ -91,6 +91,10 @@ type Config struct {
 	CrashSentryDSN string `json:"crash_sentry_dsn,omitempty"`
 	// RequestTimeout is the HTTP request timeout in seconds for all RPC calls.
 	RequestTimeout int `json:"request_timeout,omitempty"`
+	// TelemetryEnabled controls OpenTelemetry usage (opt-in default).
+	TelemetryEnabled bool `json:"telemetry_enabled,omitempty"`
+	// TelemetryEndpoint is an optional OTLP exporter URL.
+	TelemetryEndpoint string `json:"telemetry_endpoint,omitempty"`
 	// MaxTraceDepth is the maximum depth of the call tree before it is truncated.
 	MaxTraceDepth int `json:"max_trace_depth,omitempty"`
 	// FailureThreshold is the number of failures before the circuit breaker opens.
@@ -114,18 +118,17 @@ var validLogLevels = map[string]bool{
 }
 
 var defaultConfig = &Config{
-	RpcUrl:              endpoints.SorobanTestnet,
-	Network:             NetworkTestnet,
-	SimulatorPath:       "",
-	LogLevel:            "info",
-	CachePath:           joinPath(os.ExpandEnv("$HOME"), ".Glassbox", "cache"),
-	Telemetry:           false,
-	TelemetryAnonymized: true,
-	RequestTimeout:      defaultRequestTimeout,
-	MaxCacheSize:        0,
-	MaxTraceDepth:       50,
-	FailureThreshold:    defaultFailureThreshold,
-	RetryTimeout:        defaultRetryTimeout,
+	RpcUrl:           endpoints.SorobanTestnet,
+	Network:          NetworkTestnet,
+	SimulatorPath:    "",
+	LogLevel:         "info",
+	CachePath:        joinPath(os.ExpandEnv("$HOME"), ".Glassbox", "cache"),
+	RequestTimeout:   defaultRequestTimeout,
+	TelemetryEnabled: false,
+	MaxCacheSize:     0,
+	MaxTraceDepth:    50,
+	FailureThreshold: defaultFailureThreshold,
+	RetryTimeout:     defaultRetryTimeout,
 }
 
 // -- Core Functions --
@@ -377,6 +380,14 @@ func (envParser) Parse(cfg *Config) error {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
 			cfg.RetryTimeout = n
 		}
+	}
+	if v := os.Getenv("GLASSBOX_TELEMETRY"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			cfg.TelemetryEnabled = b
+		}
+	}
+	if v := os.Getenv("GLASSBOX_TELEMETRY_ENDPOINT"); v != "" {
+		cfg.TelemetryEndpoint = v
 	}
 	return nil
 }

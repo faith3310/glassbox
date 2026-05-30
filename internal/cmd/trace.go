@@ -119,6 +119,17 @@ Example:
 			return nil
 		}
 
+		if traceExportPath != "" {
+			if tracePrint {
+				return errors.WrapValidationError("cannot specify both --export and --print")
+			}
+			if err := trace.ExportExecutionTrace(executionTrace, traceExportFormat, traceExportPath); err != nil {
+				return errors.WrapValidationError(fmt.Sprintf("failed to export trace: %v", err))
+			}
+			fmt.Printf("%s Trace exported to: %s\n", visualizer.Symbol("success"), traceExportPath)
+			return nil
+		}
+
 		// Start interactive viewer
 		viewer := trace.NewInteractiveViewer(executionTrace)
 		return viewer.Start()

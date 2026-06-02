@@ -140,6 +140,16 @@ logs or piping to other tools. Add --no-color to disable ANSI colours.`,
 
 		// --print: render a rich ASCII tree report then exit (non-interactive)
 		if tracePrint {
+			if traceAnnotationsFlag != "" {
+				annMap, annErr := trace.LoadAnnotationFile(traceAnnotationsFlag)
+				if annErr != nil {
+					return errors.WrapValidationError(fmt.Sprintf("failed to load annotations: %v", annErr))
+				}
+				root := trace.BuildTraceNodeTree(executionTrace)
+				trace.MergeAnnotations(root, annMap)
+				trace.PrintTraceTree(root, trace.PrintOptions{NoColor: traceNoColor})
+				return nil
+			}
 			opts := trace.PrintOptions{
 				NoColor:      traceNoColor,
 				EventSchemas: eventSchemas,

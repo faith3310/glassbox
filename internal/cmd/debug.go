@@ -25,12 +25,14 @@ import (
 	"github.com/dotandev/glassbox/internal/errors"
 	"github.com/dotandev/glassbox/internal/logger"
 	"github.com/dotandev/glassbox/internal/lto"
+	"github.com/dotandev/glassbox/internal/perfmetrics"
 	"github.com/dotandev/glassbox/internal/replay"
 	"github.com/dotandev/glassbox/internal/rpc"
 	"github.com/dotandev/glassbox/internal/security"
 	"github.com/dotandev/glassbox/internal/session"
 	"github.com/dotandev/glassbox/internal/simulator"
 	"github.com/dotandev/glassbox/internal/snapshot"
+	"github.com/dotandev/glassbox/internal/sourcemap"
 	"github.com/dotandev/glassbox/internal/telemetry"
 	"github.com/dotandev/glassbox/internal/trace"
 	"github.com/dotandev/glassbox/internal/trace"
@@ -297,6 +299,8 @@ Local WASM Replay Mode:
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, cmdArgs []string) error {
+		perfCollector := perfmetrics.NewCollector()
+
 		if verbose {
 			logger.SetLevel(slog.LevelInfo)
 		} else {
@@ -506,15 +510,17 @@ Local WASM Replay Mode:
 			fmt.Printf("Envelope size: %d bytes\n", len(resp.EnvelopeXdr))
 		} else {
 			fmt.Printf("Fetching transaction: %s\n", txHash)
+			_t0 := time.Now()
 			resp, err = client.GetTransaction(ctx, txHash)
+			if showMetricsFlag {
+				perfCollector.RecordRPC("getTransaction", time.Since(_t0), err != nil)
+			}
 			if err != nil {
 				return errors.WrapRPCConnectionFailed(err)
 			}
 
 			fmt.Printf("Transaction fetched successfully. Envelope size: %d bytes\n", len(resp.EnvelopeXdr))
 		}
-
-		// Extract ledger keys for replay
 		keys, err := extractLedgerKeys(resp.ResultMetaXdr)
 		if err != nil {
 			return errors.WrapUnmarshalFailed(err, "result meta")
@@ -624,7 +630,13 @@ Local WASM Replay Mode:
 				applyDebugSimulationOptions(simReq)
 				applySimulationFeeMocks(simReq)
 
+				if showMetricsFlag {
+					perfCollector.StartSim()
+				}
 				simResp, err = runner.Run(ctx, simReq)
+				if showMetricsFlag {
+					perfCollector.StopSim()
+				}
 				if err != nil {
 					return errors.WrapSimulationFailed(err, "")
 				}
@@ -912,6 +924,10 @@ Local WASM Replay Mode:
 					fmt.Printf("Arweave URL  : %s\n", result.URL)
 				}
 			}
+		}
+
+		if showMetricsFlag {
+			perfCollector.Print(nil)
 		}
 
 		return nil
@@ -2056,20 +2072,28 @@ func checkLTOWarning(wasmFilePath string) {
 func displaySourceLocation(loc *simulator.SourceLocation) {
 	fmt.Printf("%s Location: %s:%d:%d\n", visualizer.Symbol("location"), loc.File, loc.Line, loc.Column)
 
+	// Resolve path aliases when --source-alias config is provided.
+	filePath := loc.File
+	if sourceAliasFlag != "" {
+		if aliases, err := sourcemap.LoadAliasConfig(sourceAliasFlag); err == nil {
+			filePath = sourcemap.NewAliasResolver(aliases).Resolve(filePath)
+		}
+	}
+
 	// Try to find the file
-	content, err := os.ReadFile(loc.File)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		// Try override path first when --contract-source is set
 		if contractSourceFlag != "" {
-			if c, err := os.ReadFile(filepath.Join(contractSourceFlag, loc.File)); err == nil {
+			if c, err := os.ReadFile(filepath.Join(contractSourceFlag, filePath)); err == nil {
 				content = c
-			} else if c, err := os.ReadFile(filepath.Join(contractSourceFlag, filepath.Base(loc.File))); err == nil {
+			} else if c, err := os.ReadFile(filepath.Join(contractSourceFlag, filepath.Base(filePath))); err == nil {
 				content = c
 			}
 		}
 		// Try to find in current directory or src
 		if content == nil {
-			if c, err := os.ReadFile(filepath.Join("src", loc.File)); err == nil {
+			if c, err := os.ReadFile(filepath.Join("src", filePath)); err == nil {
 				content = c
 			} else {
 				return

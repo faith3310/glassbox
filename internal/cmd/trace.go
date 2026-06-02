@@ -132,6 +132,12 @@ logs or piping to other tools. Add --no-color to disable ANSI colours.`,
 			return nil
 		}
 
+		verbosity, err := trace.ParseVerbosity(traceVerbosity)
+		if err != nil {
+			return errors.WrapValidationError(err.Error())
+		}
+		executionTrace = trace.FilterExecutionTrace(executionTrace, verbosity)
+
 		// --print: render a rich ASCII tree report then exit (non-interactive)
 		if tracePrint {
 			opts := trace.PrintOptions{

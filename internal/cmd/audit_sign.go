@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dotandev/glassbox/internal/clioutput"
 	"github.com/dotandev/glassbox/internal/errors"
 	"github.com/dotandev/glassbox/internal/signer"
 	"github.com/spf13/cobra"
@@ -169,6 +170,8 @@ func init() {
 		"PKCS#11 key CKA_ID in hex (overrides GLASSBOX_PKCS11_KEY_ID)")
 	auditSignCmd.Flags().BoolVar(&auditSignValidateOnly, "validate-only", false,
 		"Run PKCS#11 preflight checks and exit without signing")
+	auditSignCmd.Flags().BoolVar(&auditSignJSONFlag, "json", false,
+		"Wrap signed audit log output in a schema-versioned JSON envelope")
 
 	// Provenance flags
 	auditSignCmd.Flags().StringVar(&auditSignSignerIdentity, "signer-identity", "",

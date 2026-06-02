@@ -131,6 +131,10 @@ func newPalette(noColor bool) palette {
 //
 // Supports --no-color and responds to terminal width.
 func PrintExecutionTrace(t *ExecutionTrace, opts PrintOptions) {
+	if opts.Verbosity == 0 {
+		opts.Verbosity = VerbosityNormal
+	}
+	t = FilterExecutionTrace(t, opts.Verbosity)
 	p := newPalette(opts.NoColor)
 	out := opts.writer()
 	maxW := opts.maxWidth()

@@ -285,9 +285,9 @@ When `--show-metrics` is set, a performance summary is printed after the simulat
 
 | Flag | Default | Description |
 |---|---|---|
-| `--contract-source` | _(auto-discovery)_ | Explicit path to the contract source directory when auto-discovery fails. Path is validated at startup: must exist and be a directory. |
+| `--contract-source` | _(auto-discovery)_ | Explicit path to the contract source directory when auto-discovery fails. Path is validated at startup: must exist, be a directory, and not be blank. |
 | `--skip-source-mapping` | `false` | Skip DWARF source mapping for faster raw trace replay. |
-| `--source-alias` | _(none)_ | Path to a JSON file mapping embedded source paths to local filesystem paths. File must contain valid JSON; invalid JSON is rejected with an actionable error. |
+| `--source-alias` | _(none)_ | Path to a JSON file mapping embedded source paths to local directory paths. File must contain valid JSON, and each alias entry must have a non-empty name and non-empty target path. |
 
 **Source discovery in CI:** In non-interactive environments (CI pipelines), the
 interactive stdin prompt is skipped. When all discovery stages fail, an explicit

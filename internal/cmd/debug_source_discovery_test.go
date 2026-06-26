@@ -83,6 +83,20 @@ func TestValidateSourceDiscoveryFlags_ContractSource_Empty_ReturnsNil(t *testing
 	}
 }
 
+func TestValidateSourceDiscoveryFlags_ContractSource_Whitespace_ReturnsError(t *testing.T) {
+	prev := contractSourceFlag
+	contractSourceFlag = "   "
+	t.Cleanup(func() { contractSourceFlag = prev })
+
+	err := validateSourceDiscoveryFlags()
+	if err == nil {
+		t.Fatal("expected error for whitespace-only --contract-source")
+	}
+	if !strings.Contains(err.Error(), "--contract-source") {
+		t.Errorf("error should mention --contract-source, got: %q", err)
+	}
+}
+
 // ── validateSourceDiscoveryFlags — --source-alias JSON validation ─────────────
 
 func TestValidateSourceDiscoveryFlags_SourceAlias_InvalidJSON_ReturnsError(t *testing.T) {
@@ -126,6 +140,23 @@ func TestValidateSourceDiscoveryFlags_SourceAlias_ValidJSON_ReturnsNil(t *testin
 	err := validateSourceDiscoveryFlags()
 	if err != nil {
 		t.Errorf("should not reject valid --source-alias JSON, got: %v", err)
+	}
+}
+
+func TestValidateSourceDiscoveryFlags_SourceAlias_TargetMissing_DoesNotError(t *testing.T) {
+	dir := t.TempDir()
+	aliasPath := filepath.Join(dir, "aliases.json")
+	data, _ := json.Marshal(map[string]string{"my_crate": filepath.Join(dir, "missing-src")})
+	if err := os.WriteFile(aliasPath, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+	prev := sourceAliasFlag
+	sourceAliasFlag = aliasPath
+	t.Cleanup(func() { sourceAliasFlag = prev })
+
+	err := validateSourceDiscoveryFlags()
+	if err != nil {
+		t.Fatalf("missing --source-alias target should be treated as a warning, got: %v", err)
 	}
 }
 

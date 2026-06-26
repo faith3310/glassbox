@@ -161,6 +161,43 @@ func TestResolve_NonInteractive_ErrorListsAllStages(t *testing.T) {
 	assert.Contains(t, msg, "--contract-source override")
 }
 
+func TestResolve_PromptedWasmPath_NonExistent_ReturnsError(t *testing.T) {
+	dir := t.TempDir()
+	manualPath := dir + "/missing.wasm"
+	stdinFile, err := os.CreateTemp(dir, "stdin-*.txt")
+	require.NoError(t, err)
+	_, err = stdinFile.WriteString(manualPath + "\n")
+	require.NoError(t, err)
+	_, err = stdinFile.Seek(0, 0)
+	require.NoError(t, err)
+
+	prevStdin := os.Stdin
+	os.Stdin = stdinFile
+	t.Cleanup(func() {
+		os.Stdin = prevStdin
+		_ = stdinFile.Close()
+	})
+
+	srv := notFoundServer(t)
+	rc := NewRegistryClient(WithBaseURL(srv.URL))
+	r := NewResolver(WithRegistryClient(rc))
+
+	_, err = r.Resolve(context.Background(), testContractID)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "manual WASM path")
+	assert.Contains(t, err.Error(), "does not exist")
+}
+
+func TestLoadAliasConfig_RejectsEmptyAliasOrPath(t *testing.T) {
+	dir := t.TempDir()
+	aliasPath := dir + "/aliases.json"
+	require.NoError(t, os.WriteFile(aliasPath, []byte(`{"": "/tmp/src"}`), 0600))
+
+	_, err := LoadAliasConfig(aliasPath)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "empty alias")
+}
+
 // ── Resolver.Resolve — successful registry path ───────────────────────────────
 
 func TestResolve_RegistrySucceeds_ResultIsCached(t *testing.T) {

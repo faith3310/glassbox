@@ -65,6 +65,10 @@ func NewAliasResolverFromWorkspace(workspaceDir string) (*AliasResolver, error) 
 // LoadAliasConfig loads an AliasMap from a JSON file.
 // The file should be a flat object mapping alias → real path.
 func LoadAliasConfig(path string) (AliasMap, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, fmt.Errorf("alias: config path must not be empty")
+	}
+
 	data, err := os.ReadFile(path) //nolint:gosec
 	if err != nil {
 		return nil, fmt.Errorf("alias: read config %s: %w", path, err)
@@ -72,6 +76,17 @@ func LoadAliasConfig(path string) (AliasMap, error) {
 	var m AliasMap
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, fmt.Errorf("alias: parse config %s: %w", path, err)
+	}
+
+	for alias, target := range m {
+		trimmedAlias := strings.TrimSpace(alias)
+		trimmedTarget := strings.TrimSpace(target)
+		if trimmedAlias == "" {
+			return nil, fmt.Errorf("alias: read config %s: empty alias name", path)
+		}
+		if trimmedTarget == "" {
+			return nil, fmt.Errorf("alias: read config %s: empty target path for alias %q", path, trimmedAlias)
+		}
 	}
 	return m, nil
 }

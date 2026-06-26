@@ -64,6 +64,7 @@ The `--contract-source` path is validated before any network or simulator work b
 | Path does not exist | `--contract-source: directory not found: "<path>"` |
 | Path is a file, not a directory | `--contract-source: "<path>" is a file, not a directory` |
 | Path is not accessible | `--contract-source: cannot access "<path>": <os error>` |
+| Empty or whitespace-only value | `--contract-source: value must not be empty or whitespace` |
 
 Each error includes a remediation hint so you know exactly what to fix.
 
@@ -188,7 +189,8 @@ The alias file must be a flat JSON object:
 ```
 
 **Validation:** The file must be readable and contain valid JSON. Invalid JSON
-produces an explicit error:
+produces an explicit error, and each alias entry must have a non-empty name and
+non-empty target path:
 
 ```
 --source-alias: failed to parse "<path>" as JSON: <detail>
